@@ -31,10 +31,19 @@ T = TypeVar("T")
 
 
 def get_config(request: Request) -> AppConfig:
-    """Return the app-scoped ``AppConfig`` stored on ``app.state``."""
-    config = getattr(request.app.state, "config", None)
-    if config is None:
-        raise HTTPException(status_code=503, detail="Configuration not available")
+    """Return the current ``AppConfig``, auto-reloading when the file changes.
+
+    Uses ``get_app_config()`` so that config.yaml edits are picked up
+    without a full process restart, while still falling back to
+    ``app.state.config`` when a runtime override is active.
+    """
+    from deerflow.config.app_config import get_app_config, peek_current_app_config
+
+    runtime = peek_current_app_config()
+    if runtime is not None:
+        return runtime
+    config = get_app_config()
+    request.app.state.config = config
     return config
 
 

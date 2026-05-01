@@ -131,6 +131,10 @@ fi
 # uvicorn workers so ChannelManager HTTP calls pass auth middleware.
 export DEER_FLOW_INTERNAL_AUTH_TOKEN="${DEER_FLOW_INTERNAL_AUTH_TOKEN:-$BETTER_AUTH_SECRET}"
 
+# Gateway worker count. Keep at 1 for single-server deployments.
+# Must be exported so docker compose can substitute ${GATEWAY_WORKERS}.
+export GATEWAY_WORKERS="${GATEWAY_WORKERS:-1}"
+
 # ── detect_sandbox_mode ───────────────────────────────────────────────────────
 
 detect_sandbox_mode() {

@@ -32,6 +32,8 @@ sync_code() {
         --exclude='*.pyc' \
         --exclude='backend/.deer-flow' \
         --exclude='logs' \
+        --exclude='config.yaml' \
+        --exclude='.env' \
         . | ssh "$SERVER" "cd $REMOTE_DIR && tar xzf -"
     echo -e "${GREEN}✓ Code synced${NC}"
 }
