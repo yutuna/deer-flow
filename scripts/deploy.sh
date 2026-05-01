@@ -127,6 +127,10 @@ if [ -z "$BETTER_AUTH_SECRET" ]; then
     fi
 fi
 
+# Internal auth token for multi-worker deployments. Must be shared across
+# uvicorn workers so ChannelManager HTTP calls pass auth middleware.
+export DEER_FLOW_INTERNAL_AUTH_TOKEN="${DEER_FLOW_INTERNAL_AUTH_TOKEN:-$BETTER_AUTH_SECRET}"
+
 # ── detect_sandbox_mode ───────────────────────────────────────────────────────
 
 detect_sandbox_mode() {
