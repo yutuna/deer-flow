@@ -40,7 +40,7 @@ sync_code() {
 
 deploy() {
     echo -e "${BLUE}Building and restarting containers...${NC}"
-    ssh "$SERVER" "cd $REMOTE_DIR && bash scripts/deploy.sh start"
+    ssh "$SERVER" "cd $REMOTE_DIR && bash scripts/deploy.sh"
     echo -e "${GREEN}✓ Deployment complete${NC}"
     echo ""
     echo "  App: http://121.43.140.76"
