@@ -32,10 +32,16 @@
 ./scripts/update-server.sh sync     # 仅同步代码
 ```
 
-**方式二 - SSH git pull**:
+**方式二 - SSH 手动部署**:
 ```bash
-ssh root@121.43.140.76 'cd /opt/deer-flow && git pull origin main && bash scripts/deploy.sh start'
+# 完整构建 + 重启（deploy.sh 无参数 = up --build）
+ssh root@121.43.140.76 'cd /opt/deer-flow && git pull origin main && bash scripts/deploy.sh'
+
+# 仅重启不重建（deploy.sh start = up -d）
+ssh root@121.43.140.76 'cd /opt/deer-flow && bash scripts/deploy.sh start'
 ```
+
+> **注意**: `deploy.sh start` 跳过构建直接启动已存在的镜像，更新代码需用不带参数的 `deploy.sh`。
 
 ## SSH 管理
 
@@ -49,7 +55,10 @@ docker ps | grep deer-flow
 docker logs deer-flow-gateway --tail 50
 docker logs deer-flow-frontend --tail 50
 
-# 重启
+# 重启（重建镜像 + 启动）
+cd /opt/deer-flow && bash scripts/deploy.sh
+
+# 仅重新部署（不重建）
 cd /opt/deer-flow && bash scripts/deploy.sh start
 
 # 停止
@@ -69,3 +78,5 @@ cd /opt/deer-flow && bash scripts/deploy.sh down
 - `DEER_FLOW_TRUSTED_ORIGINS` 需包含部署域名
 - 服务器 SSH 密钥需添加到 GitHub 才能 git pull
 - Docker 镜像加速已在 /etc/docker/daemon.json 配置
+- **Swap**: 2G swap 文件已配置（/swapfile），构建 Next.js (Turbopack) 时需要，否则 OOM
+- **Docker build 内存不足**: 服务器仅 3.5G RAM，Turbopack 构建容易 SIGKILL，swap 已永久挂载
