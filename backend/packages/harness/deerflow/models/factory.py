@@ -94,13 +94,30 @@ def create_chat_model(name: str | None = None, thinking_enabled: bool = False, *
         if model_config.when_thinking_disabled is not None:
             # User-provided disable settings take full precedence
             model_settings_from_config.update(model_config.when_thinking_disabled)
+            # Normalize invalid reasoning_effort values in extra_body (e.g.
+            # "disabled", "minimal") that some APIs reject. Remove them so the
+            # API defaults to no extended thinking.
+            extra = model_settings_from_config.get("extra_body")
+            if isinstance(extra, dict) and extra.get("reasoning_effort") in ("disabled", "minimal", "none"):
+                extra = dict(extra)
+                extra.pop("reasoning_effort")
+                model_settings_from_config["extra_body"] = extra
+            if model_settings_from_config.get("reasoning_effort") in ("disabled", "minimal", "none"):
+                model_settings_from_config.pop("reasoning_effort")
         elif has_thinking_settings and effective_wte.get("extra_body", {}).get("thinking", {}).get("type"):
-            # OpenAI-compatible gateway: thinking is nested under extra_body
-            model_settings_from_config["extra_body"] = _deep_merge_dicts(
-                model_settings_from_config.get("extra_body"),
-                {"thinking": {"type": "disabled"}},
-            )
-            model_settings_from_config["reasoning_effort"] = "minimal"
+            if model_config.use_responses_api:
+                # OpenAI Responses API does not accept "disabled" or "minimal"
+                # reasoning_effort values. Clear it so the API defaults to no
+                # extended thinking.
+                model_settings_from_config.pop("reasoning_effort", None)
+            else:
+                # OpenAI-compatible Chat Completions gateway: thinking is nested
+                # under extra_body.
+                model_settings_from_config["extra_body"] = _deep_merge_dicts(
+                    model_settings_from_config.get("extra_body"),
+                    {"thinking": {"type": "disabled"}},
+                )
+                model_settings_from_config["reasoning_effort"] = "minimal"
         elif has_thinking_settings and (disable_chat_template_kwargs := _vllm_disable_chat_template_kwargs(effective_wte.get("extra_body", {}).get("chat_template_kwargs") or {})):
             # vLLM uses chat template kwargs to switch thinking on/off.
             model_settings_from_config["extra_body"] = _deep_merge_dicts(

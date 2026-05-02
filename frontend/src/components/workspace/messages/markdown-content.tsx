@@ -16,6 +16,37 @@ function isExternalUrl(href: string | undefined): boolean {
   return !!href && /^https?:\/\//.test(href);
 }
 
+const SAFE_PROTOCOL_RE = /^(https?|ircs?|mailto|xmpp)$/i;
+
+/**
+ * Custom URL transform that allows data: URIs for images.
+ * react-markdown v10's defaultUrlTransform blocks all protocols not in its
+ * safelist, which includes `data:`. Generated images from models use
+ * `data:image/jpeg;base64,...` URLs which would otherwise be cleared.
+ */
+function urlTransform(url: string, key: string): string {
+  if (key === "src" && url.startsWith("data:image/")) {
+    return url;
+  }
+
+  const colon = url.indexOf(":");
+  const questionMark = url.indexOf("?");
+  const numberSign = url.indexOf("#");
+  const slash = url.indexOf("/");
+
+  if (
+    colon === -1 ||
+    (slash !== -1 && colon > slash) ||
+    (questionMark !== -1 && colon > questionMark) ||
+    (numberSign !== -1 && colon > numberSign) ||
+    SAFE_PROTOCOL_RE.test(url.slice(0, colon))
+  ) {
+    return url;
+  }
+
+  return "";
+}
+
 export type MarkdownContentProps = {
   content: string;
   isLoading: boolean;
@@ -69,6 +100,7 @@ export function MarkdownContent({
       remarkPlugins={remarkPlugins}
       rehypePlugins={rehypePlugins}
       components={components}
+      urlTransform={urlTransform}
     >
       {content}
     </MessageResponse>

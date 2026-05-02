@@ -186,6 +186,7 @@ function MessageImage({
   alt,
   threadId,
   maxWidth = "90%",
+  node: _node,
   ...props
 }: React.ImgHTMLAttributes<HTMLImageElement> & {
   threadId: string;
@@ -193,17 +194,15 @@ function MessageImage({
 }) {
   if (!src) return null;
 
-  const imgClassName = cn("overflow-hidden rounded-lg", `max-w-[${maxWidth}]`);
-
   if (typeof src !== "string") {
-    return <img className={imgClassName} src={src} alt={alt} {...props} />;
+    return <img className="overflow-hidden rounded-lg" src={src} alt={alt} style={{ maxWidth }} {...props} />;
   }
 
   const url = src.startsWith("/mnt/") ? resolveArtifactURL(src, threadId) : src;
 
   return (
     <a href={url} target="_blank" rel="noopener noreferrer">
-      <img className={imgClassName} src={url} alt={alt} {...props} />
+      <img className="overflow-hidden rounded-lg" src={url} alt={alt} style={{ maxWidth }} {...props} />
     </a>
   );
 }

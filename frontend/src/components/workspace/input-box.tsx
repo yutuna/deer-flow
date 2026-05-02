@@ -231,7 +231,7 @@ export function InputBox({
               ? "medium"
               : mode === "thinking"
                 ? "low"
-                : "minimal",
+                : undefined,
       });
     },
     [onContextChange, context, supportThinking],

@@ -33,6 +33,7 @@ def _make_model(
     when_thinking_disabled: dict | None = None,
     thinking: dict | None = None,
     max_tokens: int | None = None,
+    use_responses_api: bool | None = None,
 ) -> ModelConfig:
     return ModelConfig(
         name=name,
@@ -47,6 +48,7 @@ def _make_model(
         when_thinking_disabled=when_thinking_disabled,
         thinking=thinking,
         supports_vision=False,
+        use_responses_api=use_responses_api,
     )
 
 
@@ -190,6 +192,41 @@ def test_thinking_disabled_openai_gateway_format(monkeypatch):
     assert "thinking" not in captured  # must NOT set the direct thinking param
 
 
+def test_thinking_disabled_responses_api_clears_reasoning_effort(monkeypatch):
+    """When use_responses_api=True and thinking is disabled, the factory must
+    NOT inject reasoning_effort=minimal or extra_body.thinking.type=disabled,
+    because the OpenAI Responses API only accepts high/low/medium/max/xhigh."""
+    wte = {"extra_body": {"thinking": {"type": "enabled", "budget_tokens": 10000}}}
+    cfg = _make_app_config(
+        [
+            _make_model(
+                "openai-responses",
+                supports_thinking=True,
+                supports_reasoning_effort=True,
+                when_thinking_enabled=wte,
+                use_responses_api=True,
+            )
+        ]
+    )
+    _patch_factory(monkeypatch, cfg)
+
+    captured: dict = {}
+
+    class CapturingModel(FakeChatModel):
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            BaseChatModel.__init__(self, **kwargs)
+
+    monkeypatch.setattr(factory_module, "resolve_class", lambda path, base: CapturingModel)
+
+    factory_module.create_chat_model(name="openai-responses", thinking_enabled=False)
+
+    # Must NOT inject extra_body thinking disable for Responses API
+    assert captured.get("extra_body") != {"thinking": {"type": "disabled"}}
+    # Must NOT set reasoning_effort to "minimal" (invalid for Responses API)
+    assert captured.get("reasoning_effort") is None
+
+
 def test_thinking_disabled_langchain_anthropic_format(monkeypatch):
     """When thinking is configured as a direct param (langchain_anthropic),
     disabling must inject thinking.type=disabled WITHOUT touching extra_body or reasoning_effort."""
@@ -283,6 +320,39 @@ def test_when_thinking_disabled_takes_precedence_over_hardcoded_disable(monkeypa
     assert captured.get("extra_body") == {"thinking": {"type": "disabled"}}
     # User overrode the hardcoded "minimal" with "low"
     assert captured.get("reasoning_effort") == "low"
+
+
+def test_when_thinking_disabled_strips_invalid_reasoning_effort(monkeypatch):
+    """when_thinking_disabled with extra_body.reasoning_effort="disabled"
+    must strip the invalid value so the API does not reject it."""
+    wtd = {"extra_body": {"reasoning_effort": "disabled", "other": "keep"}}
+    cfg = _make_app_config(
+        [
+            _make_model(
+                "strip-invalid",
+                supports_thinking=True,
+                supports_reasoning_effort=True,
+                when_thinking_disabled=wtd,
+            )
+        ]
+    )
+    _patch_factory(monkeypatch, cfg)
+
+    captured: dict = {}
+
+    class CapturingModel(FakeChatModel):
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            BaseChatModel.__init__(self, **kwargs)
+
+    monkeypatch.setattr(factory_module, "resolve_class", lambda path, base: CapturingModel)
+
+    factory_module.create_chat_model(name="strip-invalid", thinking_enabled=False)
+
+    # reasoning_effort must be stripped from extra_body
+    assert captured.get("extra_body") == {"other": "keep"}
+    # reasoning_effort must not be set as a direct field either
+    assert captured.get("reasoning_effort") is None
 
 
 def test_when_thinking_disabled_not_used_when_thinking_enabled(monkeypatch):
