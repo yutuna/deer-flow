@@ -191,6 +191,8 @@ function MessageImage({
 }: React.ImgHTMLAttributes<HTMLImageElement> & {
   threadId: string;
   maxWidth?: string;
+  /** react-markdown passes the mdast node — must be accepted to avoid spreading it to the DOM */
+  node?: unknown;
 }) {
   if (!src) return null;
 
